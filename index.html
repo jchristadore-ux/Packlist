@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="description" content="Trip packing checklist — add items, pack them off, filter and sort. Works offline; everything saves on your device."/>
+<meta name="theme-color" content="#0C1A13"/>
+<title>Packing Checklist</title>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Packlist"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B3%3C/text%3E%3C/svg%3E"/>
+</head>
+<body>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    color-scheme: light;
+    --ground:   #F4F1E8;
+    --ground-2: #EDE8DA;
+    --card:     #FFFFFF;
+    --ink:      #12261C;
+    --ink-soft: #4A5A4F;
+    --sage:     #7E9481;
+    --gold:     #B98F3E;
+    --gold-hi:  #C8A15A;
+    --line:     #E2DCCB;
+    --line-2:   #D6CFBB;
+    --packed:   #3E7C57;
+    --packed-bg:#EAF1EA;
+    --danger:   #B4544E;
+    --shadow:   0 1px 2px rgba(18,38,28,.06), 0 8px 24px rgba(18,38,28,.05);
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", "Menlo", "Consolas", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --ground:   #0C1A13;
+      --ground-2: #0F1E16;
+      --card:     #13271D;
+      --ink:      #EFEDE2;
+      --ink-soft: #A7B6AB;
+      --sage:     #869A8B;
+      --gold:     #D4B06A;
+      --gold-hi:  #E2C489;
+      --line:     #23392C;
+      --line-2:   #2C443539;
+      --packed:   #6FBF8E;
+      --packed-bg:#16301F;
+      --danger:   #E08A84;
+      --shadow:   0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --ground:#F4F1E8; --ground-2:#EDE8DA; --card:#FFFFFF; --ink:#12261C; --ink-soft:#4A5A4F;
+    --sage:#7E9481; --gold:#B98F3E; --gold-hi:#C8A15A; --line:#E2DCCB; --line-2:#D6CFBB;
+    --packed:#3E7C57; --packed-bg:#EAF1EA; --danger:#B4544E;
+    --shadow:0 1px 2px rgba(18,38,28,.06), 0 8px 24px rgba(18,38,28,.05);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:#0C1A13; --ground-2:#0F1E16; --card:#13271D; --ink:#EFEDE2; --ink-soft:#A7B6AB;
+    --sage:#869A8B; --gold:#D4B06A; --gold-hi:#E2C489; --line:#23392C; --line-2:#2C4435;
+    --packed:#6FBF8E; --packed-bg:#16301F; --danger:#E08A84;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.28);
+  }
+
+  html, body { min-height: 100%; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.4;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  * { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+  button, input { font-family: inherit; color: inherit; }
+  button { cursor: pointer; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 5px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  }
+  @keyframes rowIn { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform:none; } }
+
+  .shell { max-width: 640px; margin: 0 auto; padding: 0 18px 120px; }
+
+  /* ── Masthead ─────────────────────────────────────── */
+  .mast {
+    padding: 26px 0 20px;
+    border-bottom: 2px solid var(--ink);
+    display: flex; align-items: flex-start; gap: 14px;
+  }
+  .mast-main { flex: 1; min-width: 0; }
+  .eyebrow {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 11px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 10px;
+  }
+  .eyebrow::before {
+    content: ""; width: 22px; height: 2px; background: var(--gold); border-radius: 2px; flex: none;
+  }
+  .title-edit {
+    width: 100%; border: none; background: transparent;
+    font-size: clamp(28px, 8vw, 40px); font-weight: 800; letter-spacing: -.02em;
+    line-height: 1.02; color: var(--ink); padding: 0;
+    text-wrap: balance;
+  }
+  .title-edit:focus { outline: none; }
+  .subtitle { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+
+  .theme-btn {
+    flex: none; width: 40px; height: 40px; border-radius: 11px;
+    border: 1.5px solid var(--line-2); background: var(--card);
+    display: grid; place-items: center; color: var(--ink-soft);
+    box-shadow: var(--shadow);
+  }
+  .theme-btn:active { transform: scale(.94); }
+  .theme-btn svg { width: 19px; height: 19px; }
+  .theme-btn .moon { display: none; }
+  :root[data-theme="dark"] .theme-btn .sun,
+  :root:not([data-theme="light"]) .theme-btn .sun { display: block; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-btn .sun { display: none; }
+    :root:not([data-theme="light"]) .theme-btn .moon { display: block; }
+  }
+  :root[data-theme="dark"] .theme-btn .sun { display: none; }
+  :root[data-theme="dark"] .theme-btn .moon { display: block; }
+  :root[data-theme="light"] .theme-btn .sun { display: block; }
+  :root[data-theme="light"] .theme-btn .moon { display: none; }
+
+  /* ── Load-out gauge ───────────────────────────────── */
+  .gauge { margin-top: 22px; }
+  .gauge-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .readout { font-family: var(--mono); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 8px; }
+  .readout .big { font-size: 30px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
+  .readout .slash { font-size: 20px; color: var(--sage); }
+  .readout .total { font-size: 20px; color: var(--sage); }
+  .readout .word {
+    font-family: var(--sans); font-size: 11px; font-weight: 800; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--gold); margin-left: 4px;
+  }
+  .pct { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+  .rail { margin-top: 11px; height: 9px; border-radius: 99px; background: var(--ground-2); border: 1px solid var(--line); overflow: hidden; }
+  .rail-fill {
+    height: 100%; width: 0%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-hi));
+    transition: width .4s cubic-bezier(.4,0,.2,1);
+  }
+  .rail.complete .rail-fill { background: linear-gradient(90deg, var(--packed), var(--packed)); }
+
+  /* ── Add bar ──────────────────────────────────────── */
+  .add {
+    display: flex; gap: 9px; margin-top: 24px;
+    background: var(--card); border: 1.5px solid var(--line-2); border-radius: 14px;
+    padding: 6px 6px 6px 8px; box-shadow: var(--shadow);
+  }
+  .add:focus-within { border-color: var(--gold); }
+  .add input {
+    flex: 1; min-width: 0; border: none; background: transparent;
+    font-size: 16px; font-weight: 600; padding: 11px 6px;
+  }
+  .add input::placeholder { color: var(--sage); font-weight: 500; }
+  .add input:focus { outline: none; }
+  .add button {
+    flex: none; border: none; border-radius: 10px;
+    background: var(--ink); color: var(--ground);
+    font-size: 14px; font-weight: 800; letter-spacing: .02em; padding: 0 18px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .add button:active { transform: scale(.97); }
+  .add button svg { width: 15px; height: 15px; }
+
+  /* ── Toolbar ──────────────────────────────────────── */
+  .toolbar { display: flex; align-items: center; gap: 10px; margin: 22px 0 12px; flex-wrap: wrap; }
+  .tools-label { font-size: 10.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--sage); }
+  .seg { display: inline-flex; background: var(--ground-2); border: 1px solid var(--line); border-radius: 11px; padding: 3px; gap: 2px; }
+  .seg button {
+    border: none; background: transparent; color: var(--ink-soft);
+    padding: 7px 12px; border-radius: 8px;
+    font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
+  }
+  .seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.10); }
+  .spacer { flex: 1 1 auto; }
+  .ghost {
+    border: none; background: transparent; color: var(--sage);
+    font-size: 12px; font-weight: 700; letter-spacing: .01em; padding: 7px 2px;
+  }
+  .ghost:active { color: var(--danger); }
+  .ghost:disabled { opacity: .35; }
+
+  /* ── List ─────────────────────────────────────────── */
+  ul { list-style: none; }
+  .row {
+    display: flex; align-items: center; gap: 13px;
+    background: var(--card); border: 1.5px solid var(--line);
+    border-radius: 14px; padding: 13px 14px; margin-bottom: 9px;
+    box-shadow: var(--shadow); animation: rowIn .16s ease both;
+  }
+  .row.done { background: var(--ground-2); border-color: var(--line); box-shadow: none; }
+  .box {
+    flex: none; width: 26px; height: 26px; border-radius: 8px;
+    border: 2px solid var(--line-2); background: var(--card);
+    display: grid; place-items: center; transition: background .15s, border-color .15s;
+  }
+  .row.done .box { background: var(--packed); border-color: var(--packed); }
+  .box svg { width: 15px; height: 15px; opacity: 0; transform: scale(.5); transition: opacity .15s, transform .15s; }
+  .row.done .box svg { opacity: 1; transform: scale(1); }
+  .name { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; word-break: break-word; }
+  .row.done .name { color: var(--sage); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--sage) 55%, transparent); }
+  .kill {
+    flex: none; width: 30px; height: 30px; border-radius: 8px;
+    border: none; background: transparent; color: var(--line-2);
+    font-size: 20px; line-height: 1; display: grid; place-items: center; transition: color .12s, background .12s;
+  }
+  .kill:hover { color: var(--danger); }
+  .kill:active { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+
+  .empty { text-align: center; color: var(--sage); padding: 46px 20px; }
+  .empty .mark { font-size: 30px; margin-bottom: 10px; }
+  .empty .msg { font-size: 14px; font-weight: 600; }
+
+  .foot {
+    margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: 11.5px; font-weight: 600; color: var(--sage); flex-wrap: wrap;
+  }
+  .foot .tip { max-width: 60ch; }
+  .foot code { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+</style>
+
+<div class="shell">
+  <header class="mast">
+    <div class="mast-main">
+      <div class="eyebrow">Trip Manifest</div>
+      <input class="title-edit" id="tripTitle" value="Packing Checklist"
+             aria-label="Trip name" spellcheck="false" maxlength="60"/>
+      <div class="subtitle" id="subtitle">Tap any item to pack it. Everything saves on this device.</div>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+    </button>
+  </header>
+
+  <section class="gauge" aria-label="Packing progress">
+    <div class="gauge-row">
+      <div class="readout">
+        <span class="big" id="doneCount">0</span>
+        <span class="slash">/</span>
+        <span class="total" id="totalCount">0</span>
+        <span class="word">Packed</span>
+      </div>
+      <span class="pct" id="pct">0%</span>
+    </div>
+    <div class="rail" id="rail"><div class="rail-fill" id="railFill"></div></div>
+  </section>
+
+  <form class="add" id="addForm" autocomplete="off">
+    <input id="addInput" type="text" placeholder="Add an item…" aria-label="Add an item"/>
+    <button type="submit" aria-label="Add item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Add
+    </button>
+  </form>
+
+  <div class="toolbar">
+    <div class="seg" id="filterSeg" role="tablist" aria-label="Filter">
+      <button data-filter="all" class="on" role="tab">All</button>
+      <button data-filter="left" role="tab">Left</button>
+      <button data-filter="done" role="tab">Packed</button>
+    </div>
+    <div class="seg" id="sortSeg" aria-label="Sort">
+      <button data-sort="manual" class="on">List</button>
+      <button data-sort="status">Status</button>
+      <button data-sort="az">A–Z</button>
+    </div>
+    <span class="spacer"></span>
+    <button class="ghost" id="clearDone" type="button">Clear packed</button>
+  </div>
+
+  <ul id="list"></ul>
+
+  <footer class="foot">
+    <span class="tip">Saved to this device. On your phone, use <code>Share → Add to Home Screen</code> for one-tap offline access.</span>
+    <span id="stamp"></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var STORE = "trip_packlist_v1";
+  var PREFS = "trip_packlist_prefs_v1";
+
+  var SEED = [
+    "Cold Plunge","Extension Cord","Power Strip","Projector Speaker","Ice Molds",
+    "Firestick w/ Remote","2 HDMI Cables","Misting Fan","Charging Station","Extra Balls",
+    "Extra Tees","Mounting for Flag","Shirts","Food Prep","Day Sheets","Theragun",
+    "Both Knee Ice Jawns","Triple A Batteries","Cart Cooler","Diet Cokes","Water Bottles",
+    "Electrolyte Packets","Vape Pods"
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var listEl = $("list"), addForm = $("addForm"), addInput = $("addInput");
+  var filterSeg = $("filterSeg"), sortSeg = $("sortSeg"), clearBtn = $("clearDone");
+  var doneEl = $("doneCount"), totalEl = $("totalCount"), pctEl = $("pct");
+  var rail = $("rail"), railFill = $("railFill"), subtitle = $("subtitle");
+  var titleEl = $("tripTitle"), stampEl = $("stamp"), themeBtn = $("themeBtn");
+
+  function uid(){ return "i_" + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4); }
+
+  var items, prefs;
+  function load() {
+    try { var r = JSON.parse(localStorage.getItem(STORE)); if (Array.isArray(r)) return r; } catch(e){}
+    return SEED.map(function (t,i){ return { id:uid(), text:t, done:false, order:i }; });
+  }
+  function loadPrefs() {
+    try { var p = JSON.parse(localStorage.getItem(PREFS)); if (p) return p; } catch(e){}
+    return { filter:"all", sort:"manual", title:"Packing Checklist", theme:null };
+  }
+  function save(){ try { localStorage.setItem(STORE, JSON.stringify(items)); } catch(e){} }
+  function savePrefs(){ try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch(e){} }
+
+  items = load();
+  prefs = loadPrefs();
+
+  /* ── Theme ──────────────────────────────────── */
+  function applyTheme(){
+    if (prefs.theme === "light" || prefs.theme === "dark") {
+      document.documentElement.setAttribute("data-theme", prefs.theme);
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }
+  themeBtn.addEventListener("click", function(){
+    var current = prefs.theme;
+    if (!current) {
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      current = prefersDark ? "dark" : "light";
+    }
+    prefs.theme = (current === "dark") ? "light" : "dark";
+    savePrefs(); applyTheme();
+  });
+  applyTheme();
+
+  /* ── Title ──────────────────────────────────── */
+  titleEl.value = prefs.title || "Packing Checklist";
+  function commitTitle(){
+    var v = titleEl.value.trim() || "Packing Checklist";
+    titleEl.value = v; prefs.title = v; savePrefs();
+    document.title = v;
+  }
+  titleEl.addEventListener("blur", commitTitle);
+  titleEl.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); titleEl.blur(); } });
+  document.title = prefs.title || "Packing Checklist";
+
+  /* ── Mutations ──────────────────────────────── */
+  function addItem(text){
+    text = (text||"").trim(); if (!text) return;
+    var max = items.reduce(function(m,it){ return Math.max(m, it.order||0); }, -1);
+    items.push({ id:uid(), text:text, done:false, order:max+1 });
+    save(); render();
+  }
+  function toggle(id){ var it = items.find(function(x){return x.id===id;}); if (it){ it.done=!it.done; save(); render(); } }
+  function remove(id){ items = items.filter(function(x){return x.id!==id;}); save(); render(); }
+  function clearDone(){
+    if (!items.some(function(x){return x.done;})) return;
+    if (!confirm("Remove all packed items from the list?")) return;
+    items = items.filter(function(x){return !x.done;}); save(); render();
+  }
+
+  /* ── View ───────────────────────────────────── */
+  function view(){
+    var out = items.slice();
+    if (prefs.filter === "left") out = out.filter(function(x){return !x.done;});
+    else if (prefs.filter === "done") out = out.filter(function(x){return x.done;});
+    if (prefs.sort === "az") out.sort(function(a,b){ return a.text.toLowerCase().localeCompare(b.text.toLowerCase()); });
+    else if (prefs.sort === "status") out.sort(function(a,b){ if(a.done!==b.done) return a.done?1:-1; return (a.order||0)-(b.order||0); });
+    else out.sort(function(a,b){ return (a.order||0)-(b.order||0); });
+    return out;
+  }
+  var CHECK = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function render(){
+    var total = items.length, done = items.filter(function(x){return x.done;}).length;
+    doneEl.textContent = done; totalEl.textContent = total;
+    var p = total ? Math.round(done/total*100) : 0;
+    pctEl.textContent = p + "%";
+    railFill.style.width = p + "%";
+    rail.classList.toggle("complete", total>0 && done===total);
+    subtitle.textContent = (total>0 && done===total)
+      ? "All packed — you’re set. Safe travels."
+      : (total - done) + " item" + ((total-done)===1?"":"s") + " left to pack.";
+
+    Array.prototype.forEach.call(filterSeg.children, function(b){ b.classList.toggle("on", b.dataset.filter===prefs.filter); });
+    Array.prototype.forEach.call(sortSeg.children, function(b){ b.classList.toggle("on", b.dataset.sort===prefs.sort); });
+    clearBtn.disabled = !items.some(function(x){return x.done;});
+
+    var v = view();
+    listEl.innerHTML = "";
+    if (!v.length){
+      var msg = prefs.filter==="done" ? "Nothing packed yet — tap an item to check it off."
+              : prefs.filter==="left" ? "Everything’s packed. Nice work."
+              : "The list is empty. Add your first item above.";
+      var mark = prefs.filter==="left" ? "✅" : "🧳";
+      listEl.innerHTML = '<li class="empty"><div class="mark">'+mark+'</div><div class="msg">'+msg+'</div></li>';
+    } else {
+      v.forEach(function(it){
+        var li = document.createElement("li");
+        li.className = "row" + (it.done ? " done" : "");
+        var box = document.createElement("button");
+        box.className = "box"; box.type = "button"; box.setAttribute("role","checkbox");
+        box.setAttribute("aria-checked", it.done ? "true":"false");
+        box.setAttribute("aria-label", (it.done?"Unpack ":"Pack ")+it.text);
+        box.innerHTML = CHECK;
+        box.addEventListener("click", function(){ toggle(it.id); });
+        var name = document.createElement("span");
+        name.className = "name"; name.textContent = it.text;
+        name.addEventListener("click", function(){ toggle(it.id); });
+        var kill = document.createElement("button");
+        kill.className = "kill"; kill.type = "button"; kill.setAttribute("aria-label","Delete "+it.text);
+        kill.innerHTML = "&times;";
+        kill.addEventListener("click", function(){ remove(it.id); });
+        li.appendChild(box); li.appendChild(name); li.appendChild(kill);
+        listEl.appendChild(li);
+      });
+    }
+    stampEl.textContent = done + " of " + total + " packed";
+  }
+
+  /* ── Events ─────────────────────────────────── */
+  addForm.addEventListener("submit", function(e){ e.preventDefault(); addItem(addInput.value); addInput.value=""; addInput.focus(); });
+  filterSeg.addEventListener("click", function(e){ var b=e.target.closest("button"); if(!b)return; prefs.filter=b.dataset.filter; savePrefs(); render(); });
+  sortSeg.addEventListener("click", function(e){ var b=e.target.closest("button"); if(!b)return; prefs.sort=b.dataset.sort; savePrefs(); render(); });
+  clearBtn.addEventListener("click", clearDone);
+
+  render();
+})();
+</script>
+</body>
+</html>
